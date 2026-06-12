@@ -423,6 +423,14 @@ async def add_account(client, query):
         )
     ).text.strip()
 
+    await msg.reply("Max Ref:")
+    max_ref = (
+        await client.listen(
+            chat_id=msg.chat.id,
+            user_id=query.from_user.id
+        )
+    ).text.strip()
+
     while True:
 
         acc_id = generate_acc_id()
