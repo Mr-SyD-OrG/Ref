@@ -984,22 +984,39 @@ async def refer_account(client, query):
             "Account not found."
         )
 
-    valid_ref = acc.get("valid_ref", 0)
+    vvalid_ref = acc.get("valid_ref", 0)
     max_ref = acc.get("max_ref", 4)
+    paused = acc.get("paused", False)
+    if paused:
 
-    if valid_ref >= max_ref:
         text = (
             f"📱 Account: `{acc_id}`\n\n"
-            f"🔗 Link: Maximum Valid ReFer Reached, Please withdraw the amount"
-        )
-    else:
-        text = (
-            f"📱 Account: `{acc_id}`\n\n"
-            f"🔗 Link:\n{acc['url']}\n\n"
+            f"⏸ Account Paused\n"
+            f"❌ Don't refer now.\n\n"
             f"🍃 Valid Ref: {valid_ref}\n"
             f"⚠️ Maximum Ref: {max_ref}"
         )
 
+    elif valid_ref >= max_ref:
+
+        text = (
+            f"📱 Account: `{acc_id}`\n\n"
+            f"🔒 Link Hidden\n"
+            f"Maximum Valid Referrals Reached.\n"
+            f"Please withdraw the amount.\n\n"
+            f"🍃 Valid Ref: {valid_ref}\n"
+            f"⚠️ Maximum Ref: {max_ref}"
+        )
+
+    else:
+
+        text = (
+            f"📱 Account: `{acc_id}`\n\n"
+            f"🔗 Link:\n"
+            f"{acc['url']}\n\n"
+            f"🍃 Valid Ref: {valid_ref}\n"
+            f"⚠️ Maximum Ref: {max_ref}"
+        )
     await query.message.reply(
         text,
         disable_web_page_preview=True,
