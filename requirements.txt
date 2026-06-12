@@ -3,6 +3,7 @@ TgCrypto
 motor
 dnspython
 hachoir
+telethon
 Pillow
 aiohttp
 pytz
