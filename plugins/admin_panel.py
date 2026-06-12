@@ -13,7 +13,7 @@ from pyrogram.errors import MessageNotModified
 from motor.motor_asyncio import AsyncIOMotorClient
 ADMINS = Config.ADMINS
 RUNNING_ACCOUNTS = {}
-BOT_ID = 1733124290
+BOT_ID = 7996790736
 LOG_CHANNEL = Config.LOG_CHANNEL
 
 
