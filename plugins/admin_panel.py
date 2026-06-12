@@ -1,123 +1,541 @@
-from config import Config
-from helper.database import db
-from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram import Client, filters
-from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked, PeerIdInvalid
-import os
-import sys
-import time
-import asyncio
-import logging
-import datetime
-from helper.utils import start_clone_bot, client
+from pyrogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+from pyromod import listen
+from motor.motor_asyncio import AsyncIOMotorClient
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+# MongoDB
 
-
-@Client.on_message(filters.command(["stats", "status"]) & filters.user(Config.ADMIN))
-async def get_stats(bot, message):
-    total_users = await db.total_users_count()
-    uptime = time.strftime("%Hh%Mm%Ss", time.gmtime(
-        time.time() - Config.BOT_UPTIME))
-    start_t = time.time()
-    st = await message.reply('**Aᴄᴄᴇꜱꜱɪɴɢ Tʜᴇ Dᴇᴛᴀɪʟꜱ.....**')
-    end_t = time.time()
-    time_taken_s = (end_t - start_t) * 1000
-    await st.edit(text=f"**--Bᴏᴛ Sᴛᴀᴛᴜꜱ--** \n\n**⌚️ Bᴏᴛ Uᴩᴛɪᴍᴇ:** {uptime} \n**🐌 Cᴜʀʀᴇɴᴛ Pɪɴɢ:** `{time_taken_s:.3f} ᴍꜱ` \n**👭 Tᴏᴛᴀʟ Uꜱᴇʀꜱ:** `{total_users}`")
+from motor.motor_asyncio import AsyncIOMotorClient
 
 
-# Restart to cancell all process
-@Client.on_message(filters.private & filters.command("restart") & filters.user(Config.ADMIN))
-async def restart_bot(b, m):
-    await m.reply_text("🔄__Rᴇꜱᴛᴀʀᴛɪɴɢ.....__")
-    os.execl(sys.executable, sys.executable, *sys.argv)
+class Database:
 
+    def __init__(self, uri):
 
-@Client.on_message(filters.command("broadcast") & filters.user(Config.ADMIN) & filters.reply)
-async def broadcast_handler(bot: Client, m: Message):
-    await bot.send_message(Config.LOG_CHANNEL, f"{m.from_user.mention} or {m.from_user.id} Iꜱ ꜱᴛᴀʀᴛᴇᴅ ᴛʜᴇ Bʀᴏᴀᴅᴄᴀꜱᴛ......")
-    all_users = await db.get_all_users()
-    broadcast_msg = m.reply_to_message
-    sts_msg = await m.reply_text("Bʀᴏᴀᴅᴄᴀꜱᴛ Sᴛᴀʀᴛᴇᴅ..!")
-    done = 0
-    failed = 0
-    success = 0
-    start_time = time.time()
-    total_users = await db.total_users_count()
-    async for user in all_users:
-        sts = await send_msg(user['_id'], broadcast_msg)
-        if sts == 200:
-            success += 1
+        self.mongo = AsyncIOMotorClient(uri)
+        self.db = self.mongo["bot"]
+
+        self.users = self.db["verified_users"]
+        self.accounts = self.db["accounts"]
+        self.referrals = self.db["referrals"]
+
+    # -----------------
+    # VERIFIED USERS
+    # -----------------
+
+    async def is_verified(self, user_id):
+
+        return await self.users.find_one(
+            {"user_id": user_id}
+        ) is not None
+
+    async def add_verified(self, user_id):
+
+        await self.users.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "user_id": user_id
+                }
+            },
+            upsert=True
+        )
+
+    async def remove_verified(self, user_id):
+
+        return await self.users.delete_one(
+            {"user_id": user_id}
+        )
+
+    async def get_verified(self):
+
+        return await self.users.find().to_list(
+            length=None
+        )
+
+    # -----------------
+    # ACCOUNTS
+    # -----------------
+
+    async def add_account(
+        self,
+        acc_id,
+        api_id,
+        api_hash,
+        session,
+        url
+    ):
+
+        await self.accounts.insert_one(
+            {
+                "acc_id": acc_id,
+                "api_id": api_id,
+                "api_hash": api_hash,
+                "session": session,
+                "url": url,
+                "paused": False,
+                "total_ref": 0,
+                "valid_ref": 0,
+                "reref": 0
+            }
+        )
+
+    async def get_account(self, acc_id):
+
+        return await self.accounts.find_one(
+            {"acc_id": acc_id}
+        )
+
+    async def get_accounts(self):
+
+        return await self.accounts.find().to_list(
+            length=None
+        )
+
+    async def get_active_accounts(self):
+
+        return await self.accounts.find(
+            {"paused": False}
+        ).to_list(length=None)
+
+    async def pause_account(
+        self,
+        acc_id,
+        paused
+    ):
+
+        await self.accounts.update_one(
+            {"acc_id": acc_id},
+            {
+                "$set": {
+                    "paused": paused
+                }
+            }
+        )
+
+    async def delete_account(self, acc_id):
+
+        await self.accounts.delete_one(
+            {"acc_id": acc_id}
+        )
+
+        await self.referrals.delete_many(
+            {"acc_id": acc_id}
+        )
+
+    # -----------------
+    # REFERRALS
+    # -----------------
+
+    async def add_referral(
+        self,
+        acc_id,
+        name,
+        stars,
+        valid,
+        timestamp
+    ):
+
+        await self.referrals.insert_one(
+            {
+                "acc_id": acc_id,
+                "name": name,
+                "stars": stars,
+                "valid": valid,
+                "timestamp": timestamp
+            }
+        )
+
+        update = {
+            "$inc": {
+                "total_ref": 1
+            }
+        }
+
+        if valid:
+            update["$inc"]["valid_ref"] = 1
         else:
-            failed += 1
-        if sts == 400:
-            await db.delete_user(user['_id'])
-        done += 1
-        if not done % 20:
-            await sts_msg.edit(f"Bʀᴏᴀᴅᴄᴀꜱᴛ Iɴ Pʀᴏɢʀᴇꜱꜱ: \nTᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users} \nCᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\nSᴜᴄᴄᴇꜱꜱ: {success}\nFᴀɪʟᴇᴅ: {failed}")
-    completed_in = datetime.timedelta(seconds=int(time.time() - start_time))
-    await sts_msg.edit(f"Bʀᴏᴀᴅᴄᴀꜱᴛ Cᴏᴍᴩʟᴇᴛᴇᴅ: \nCᴏᴍᴩʟᴇᴛᴇᴅ Iɴ `{completed_in}`.\n\nTᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users}\nCᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\nSᴜᴄᴄᴇꜱꜱ: {success}\nFᴀɪʟᴇᴅ: {failed}")
+            update["$inc"]["reref"] = 1
+
+        await self.accounts.update_one(
+            {"acc_id": acc_id},
+            update
+        )
+
+    async def get_referrals(self, acc_id):
+
+        return await self.referrals.find(
+            {"acc_id": acc_id}
+        ).to_list(length=None)
+
+    async def latest_referral(self, acc_id):
+
+        return await self.referrals.find_one(
+            {"acc_id": acc_id},
+            sort=[("timestamp", -1)]
+        )
+        
+ADMINS = [123456789]  # Admin IDs
 
 
-async def send_msg(user_id, message):
+from pyrogram import Client, filters
+from pyrogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+
+
+@Client.on_message(filters.command("users"))
+async def users_cmd(client, message):
+    user_id = message.from_user.id
+
+    if user_id not in ADMINS:
+        return await message.reply(
+            "❌ Admin only."
+        )
+
+    await message.reply(
+        "User Management",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "➕ To Add",
+                        callback_data="add_user"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "➖ To Remove",
+                        callback_data="remove_user"
+                    )
+                ]
+            ]
+        )
+    )
+
+
+@Client.on_callback_query(filters.regex("^add_user$"))
+async def add_user(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return await query.answer(
+            "Not allowed",
+            show_alert=True
+        )
+
+    await query.message.reply(
+        "Send User ID to verify:"
+    )
+
+    reply = await client.listen(
+        chat_id=query.message.chat.id,
+        user_id=query.from_user.id
+    )
+
     try:
-        await message.forward(chat_id=int(user_id))
-        return 200
-    except FloodWait as e:
-        await asyncio.sleep(e.value)
-        return send_msg(user_id, message)
-    except InputUserDeactivated:
-        logger.info(f"{user_id} : Dᴇᴀᴄᴛɪᴠᴀᴛᴇᴅ")
-        return 400
-    except UserIsBlocked:
-        logger.info(f"{user_id} : Bʟᴏᴄᴋᴇᴅ Tʜᴇ Bᴏᴛ")
-        return 400
-    except PeerIdInvalid:
-        logger.info(f"{user_id} : Uꜱᴇʀ Iᴅ Iɴᴠᴀʟɪᴅ")
-        return 400
-    except Exception as e:
-        logger.error(f"{user_id} : {e}")
-        return 500
+        user_id = int(reply.text.strip())
+
+    except Exception:
+        return await query.message.reply(
+            "Invalid User ID."
+        )
+
+    if await db.is_verified(user_id):
+
+        return await query.message.reply(
+            f"`{user_id}` is already verified."
+        )
+
+    await db.add_verified(user_id)
+
+    await query.message.reply(
+        f"✅ Verified User\n\n"
+        f"`{user_id}`"
+    )
 
 
-@Client.on_message(filters.private & filters.command('add_userbot') & filters.user(Config.ADMIN))
-async def add_userbot(bot: Client, message: Message):
+@Client.on_callback_query(filters.regex("^remove_user$"))
+async def remove_user(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return await query.answer(
+            "Not allowed",
+            show_alert=True
+        )
+
+    users = await db.get_verified()
+
+    if not users:
+
+        return await query.message.reply(
+            "No verified users found."
+        )
+
+    text = "Verified Users\n\n"
+
+    for user in users:
+
+        text += (
+            f"`{user['user_id']}`\n"
+        )
+
+    text += "\nSend User ID to remove:"
+
+    await query.message.reply(text)
+
+    reply = await client.listen(
+        chat_id=query.message.chat.id,
+        user_id=query.from_user.id
+    )
+
     try:
-        bot_exist = await db.is_user_bot_exist(message.from_user.id)
+        user_id = int(reply.text.strip())
 
-        if bot_exist:
-            return await message.reply_text('**⚠️ User Bot Already Exists**', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('User Bot', callback_data='userbot')]]))
-    except:
-        pass
+    except Exception:
+        return await query.message.reply(
+            "Invalid User ID."
+        )
 
-    user_id = int(message.from_user.id)
+    result = await db.remove_verified(
+        user_id
+    )
 
-    text = "<b>⚠️ DISCLAIMER ⚠️</b>\n\n<code>\nPlease add your pyrogram session with your own risk. Their is a chance to ban your account. My developer is not responsible if your account may get banned.</code>"
-    await bot.send_message(user_id, text=text)
-    msg = await bot.ask(chat_id=user_id, text="<b>send your pyrogram session.\nget it from @SnowStringGenBot - /cancel the process</b>")
-    if msg.text == '/cancel':
-        return await msg.reply('<b>process cancelled !</b>')
-    elif len(msg.text) < 351:
-        return await msg.reply('<b>invalid session sring</b>')
-    try:
-        user_account = await start_clone_bot(client(msg.text))
-    except Exception as e:
-        await msg.reply_text(f"<b>USER BOT ERROR:</b> `{e}`")
-        print('Error on line {}'.format(
-            sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
+    if result.deleted_count:
 
-    user = user_account.me
+        await query.message.reply(
+            f"✅ Removed User\n\n"
+            f"`{user_id}`"
+        )
 
-    details = {
-        'id': user.id,
-        'is_bot': False,
-        'user_id': user_id,
-        'name': user.first_name,
-        'session': msg.text,
-        'username': user.username
-    }
+    else:
 
-    await db.add_user_bot(details)
+        await query.message.reply(
+            "User ID not found."
+    )
 
-    await message.reply_text("**User Bot Added Successfully ✅**", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('❮ Back', callback_data='userbot')]]))
+
+
+
+
+
+from pyrogram import Client, filters
+from pyrogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+import random
+
+ADMINS = [123456789]
+
+
+def generate_acc_id():
+    return str(random.randint(100000, 999999))
+
+
+@Client.on_message(filters.command("accounts"))
+async def accounts_cmd(client, message):
+
+    if message.from_user.id not in ADMINS:
+        return await message.reply("❌ Admin only.")
+
+    accounts = await db.get_accounts()
+
+    buttons = [
+        [
+            InlineKeyboardButton(
+                "➕ Add Account",
+                callback_data="add_account"
+            )
+        ]
+    ]
+
+    for acc in accounts:
+
+        status = (
+            "⏸"
+            if acc.get("paused")
+            else "▶️"
+        )
+
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    f"{status} {acc['acc_id']}",
+                    callback_data=f"acc_{acc['acc_id']}"
+                )
+            ]
+        )
+
+    await message.reply(
+        f"📱 Accounts: {len(accounts)}",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+
+@Client.on_callback_query(filters.regex("^add_account$"))
+async def add_account(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    msg = query.message
+
+    await msg.reply("Send API ID:")
+    api_id = (
+        await client.listen(
+            chat_id=msg.chat.id,
+            user_id=query.from_user.id
+        )
+    ).text.strip()
+
+    await msg.reply("Send API HASH:")
+    api_hash = (
+        await client.listen(
+            chat_id=msg.chat.id,
+            user_id=query.from_user.id
+        )
+    ).text.strip()
+
+    await msg.reply("Send SESSION STRING:")
+    session = (
+        await client.listen(
+            chat_id=msg.chat.id,
+            user_id=query.from_user.id
+        )
+    ).text.strip()
+
+    await msg.reply("Send URL:")
+    url = (
+        await client.listen(
+            chat_id=msg.chat.id,
+            user_id=query.from_user.id
+        )
+    ).text.strip()
+
+    while True:
+
+        acc_id = generate_acc_id()
+
+        if not await db.get_account(acc_id):
+            break
+
+    await db.add_account(
+        acc_id=acc_id,
+        api_id=int(api_id),
+        api_hash=api_hash,
+        session=session,
+        url=url
+    )
+
+    await msg.reply(
+        f"✅ Account Added\n\n"
+        f"ID: `{acc_id}`"
+    )
+
+
+@Client.on_callback_query(filters.regex(r"^acc_(.+)$"))
+async def account_view(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    acc = await db.get_account(acc_id)
+
+    if not acc:
+
+        return await query.message.reply(
+            "Account not found."
+        )
+
+    status = (
+        "⏸ Paused"
+        if acc.get("paused")
+        else "▶️ Active"
+    )
+
+    text = (
+        f"📱 Account: `{acc_id}`\n\n"
+        f"Status: {status}\n\n"
+        f"🔗 URL:\n{acc.get('url', 'N/A')}\n\n"
+        f"📊 Statistics\n"
+        f"Total: {acc.get('total_ref', 0)}\n"
+        f"Valid: {acc.get('valid_ref', 0)}\n"
+        f"Re-Refer: {acc.get('reref', 0)}"
+    )
+
+    await query.message.reply(
+        text,
+        disable_web_page_preview=True,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "⏸ Pause/Resume",
+                        callback_data=f"toggle_{acc_id}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🗑 Delete",
+                        callback_data=f"delete_{acc_id}"
+                    )
+                ]
+            ]
+        )
+    )
+
+
+@Client.on_callback_query(filters.regex(r"^toggle_(.+)$"))
+async def toggle_account(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    acc = await db.get_account(acc_id)
+
+    if not acc:
+
+        return await query.answer(
+            "Account not found",
+            show_alert=True
+        )
+
+    new_state = not acc["paused"]
+
+    await db.pause_account(
+        acc_id,
+        new_state
+    )
+
+    await query.answer(
+        "⏸ Account Paused"
+        if new_state
+        else "▶️ Account Resumed",
+        show_alert=True
+    )
+
+
+@Client.on_callback_query(filters.regex(r"^delete_(.+)$"))
+async def delete_account(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    await db.delete_account(acc_id)
+
+    await query.message.reply(
+        f"🗑 Account Deleted\n\n"
+        f"ID: `{acc_id}`"
+    )
+
+    await query.answer()
