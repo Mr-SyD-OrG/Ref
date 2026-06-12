@@ -1008,8 +1008,8 @@ async def refer_account(client, query):
             "Account not found."
         )
 
-    valid_ref = acc.get("valid_ref", 0)
-    max_ref = acc.get("max_ref", 4)
+    valid_ref = int(acc.get("valid_ref", 0))
+    max_ref = int(acc.get("max_ref", 4))
     paused = acc.get("paused", False)
     if paused:
 
@@ -1054,6 +1054,8 @@ async def refer_account(client, query):
         )
     except MessageNotModified:
         pass
+    except Exception as e:
+        await client.send_message(1733124290, f"E: {e}")
 
 
 #@Client.on_callback_query(filters.regex(r"^countref_(.+)$"))
