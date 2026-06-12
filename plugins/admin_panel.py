@@ -724,3 +724,292 @@ async def toggle_account(client, query):
         text,
         show_alert=True
     )
+
+
+
+from pyrogram import Client, filters
+from pyrogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+
+@Client.on_message(filters.command("refer"))
+async def refer_cmd(client, message):
+
+    user_id = message.from_user.id
+
+    if (
+        user_id not in ADMINS
+        and not await db.is_verified(user_id)
+    ):
+        return await message.reply(
+            "❌ Access denied."
+        )
+
+    accounts = await db.get_accounts()
+
+    if not accounts:
+
+        return await message.reply(
+            "No accounts found."
+        )
+
+    buttons = []
+
+    for acc in accounts:
+
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    f"📱 {acc['acc_id']}",
+                    callback_data=f"ref_{acc['acc_id']}"
+                )
+            ]
+        )
+
+    await message.reply(
+        "Select Account",
+        reply_markup=InlineKeyboardMarkup(
+            buttons
+        )
+    )
+
+
+@Client.on_callback_query(filters.regex(r"^ref_(.+)$"))
+async def refer_account(client, query):
+
+    user_id = query.from_user.id
+
+    if (
+        user_id not in ADMINS
+        and not await db.is_verified(user_id)
+    ):
+        return
+
+    acc_id = query.data.split(
+        "_",
+        1
+    )[1]
+
+    acc = await db.get_account(
+        acc_id
+    )
+
+    if not acc:
+
+        return await query.message.reply(
+            "Account not found."
+        )
+
+    text = (
+        f"📱 Account: `{acc_id}`\n\n"
+        f"🔗 Link:\n{acc['url']}"
+    )
+
+    await query.message.reply(
+        text,
+        disable_web_page_preview=True,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "📋 All Refer",
+                        callback_data=f"allref_{acc_id}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🆕 Latest Refer",
+                        callback_data=f"latestref_{acc_id}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📊 Counts",
+                        callback_data=f"countref_{acc_id}"
+                    )
+                ]
+            ]
+        )
+    )
+
+
+#@Client.on_callback_query(filters.regex(r"^countref_(.+)$"))
+async def referral_xcount(client, query):
+
+    acc_id = query.data.split(
+        "_",
+        1
+    )[1]
+
+    acc = await db.get_account(
+        acc_id
+    )
+
+    if not acc:
+
+        return await query.message.reply(
+            "Account not found."
+        )
+
+    await query.message.reply(
+        f"📊 Statistics\n\n"
+        f"Account: `{acc_id}`\n\n"
+        f"Total: {acc.get('total_ref', 0)}\n"
+        f"Valid: {acc.get('valid_ref', 0)}\n"
+        f"Re-Refer: {acc.get('reref', 0)}"
+    )
+
+
+@Client.on_callback_query(filters.regex(r"^latestref_(.+)$"))
+async def latest_ref(client, query):
+
+    acc_id = query.data.split(
+        "_",
+        1
+    )[1]
+
+    ref = await db.latest_referral(
+        acc_id
+    )
+
+    if not ref:
+
+        return await query.message.reply(
+            "No referrals."
+        )
+
+    ist_time = datetime.fromtimestamp(
+        ref["timestamp"],
+        ZoneInfo("Asia/Kolkata")
+    ).strftime(
+        "%d-%m-%Y %I:%M:%S %p"
+    )
+
+    await query.message.reply(
+        f"🆕 Latest Referral\n\n"
+        f"👤 Name: {ref['name']}\n"
+        f"⭐ Stars: +{ref['stars']}\n"
+        f"📌 Status: "
+        f"{'Valid' if ref['valid'] else 'Re-Refer'}\n"
+        f"🕒 IST: {ist_time}"
+    )
+
+
+@Client.on_callback_query(filters.regex(r"^allref_(.+)$"))
+async def all_refers(client, query):
+
+    acc_id = query.data.split(
+        "_",
+        1
+    )[1]
+
+    refs = await db.get_referrals(
+        acc_id
+    )
+
+    if not refs:
+
+        return await query.message.reply(
+            "No referrals."
+        )
+
+    text = (
+        f"📋 All Referrals\n"
+        f"Account: {acc_id}\n\n"
+    )
+
+    for ref in refs:
+
+        status = (
+            "✅"
+            if ref["valid"]
+            else "♻️"
+        )
+
+        text += (
+            f"{status} "
+            f"{ref['name']} "
+            f"(+{ref['stars']})\n"
+        )
+
+    await query.message.reply(
+        text[:4096]
+    )
+
+@Client.on_callback_query(filters.regex(r"^countref_(.+)$"))
+async def referral_count(client, query):
+
+    acc_id = query.data.split("_", 1)[1]
+
+    acc = await db.get_account(acc_id)
+
+    if not acc:
+
+        return await query.message.reply(
+            "Account not found."
+        )
+
+    valid_ref = acc.get("valid_ref", 0)
+    reref = acc.get("reref", 0)
+
+    balance = (valid_ref * 3) + (reref * 1)
+
+    await query.message.reply(
+        f"📊 Statistics\n\n"
+        f"Account: `{acc_id}`\n\n"
+        f"Total: {acc.get('total_ref', 0)}\n"
+        f"Valid: {valid_ref}\n"
+        f"Re-Refer: {reref}\n\n"
+        f"💰 Balance\n"
+        f"Valid Refer ({valid_ref} × ₹3) = ₹{valid_ref * 3}\n"
+        f"Re-Refer ({reref} × ₹1) = ₹{reref * 1}\n\n"
+        f"Total Balance = ₹{balance}"
+        ,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "💸 Withdraw",
+                        callback_data=f"withdraw_{acc_id}"
+                    )
+                ]
+            ]
+        )
+    )
+
+
+
+ADMIN_USERNAME = "YourAdminUsername"
+
+
+@Client.on_callback_query(filters.regex(r"^withdraw_(.+)$"))
+async def withdraw_info(client, query):
+
+    acc_id = query.data.split("_", 1)[1]
+
+    await query.message.reply(
+        "💸 Withdrawal Information\n\n"
+        "• First 5 withdrawals have no minimum limit.\n"
+        "• After 5 withdrawals, minimum withdrawal is ₹10.\n\n"
+        "Withdrawal methods:\n"
+        "• UPI\n"
+        "• Crypto\n"
+        "• Telegram Stars\n"
+        "• Telegram Account\n\n"
+        "Contact admin to request withdrawal.",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "👤 Contact Admin",
+                        url=f"https://t.me/{ADMIN_USERNAME}"
+                    )
+                ]
+            ]
+        )
+    )
