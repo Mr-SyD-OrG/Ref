@@ -690,7 +690,7 @@ from zoneinfo import ZoneInfo
 
 
 
-async def start_account(acc):
+async def start_account(client, acc):
 
     acc_id = acc["acc_id"]
 
@@ -766,7 +766,7 @@ async def start_account(acc):
                 "%d-%m-%Y %I:%M:%S %p"
             )
 
-            await app.send_message(
+            await client.send_message(
                 LOG_CHANNEL,
                 f"📱 Account: {acc_id}\n"
                 f"👤 Name: {name}\n"
@@ -790,7 +790,7 @@ async def start_account(acc):
         return False
 
 
-async def start_all_accounts():
+async def start_all_accounts(client):
 
     accounts = await db.get_active_accounts()
 
@@ -798,7 +798,7 @@ async def start_all_accounts():
 
     for acc in accounts:
 
-        if await start_account(acc):
+        if await start_account(client, acc):
             started += 1
 
     return started
@@ -813,7 +813,7 @@ async def startacc_cmd(client, message):
     if message.from_user.id not in ADMINS:
         return
 
-    count = await start_all_accounts()
+    count = await start_all_accounts(client)
 
     await message.reply(
         f"✅ Started {count} account(s)\n\n"
@@ -908,7 +908,7 @@ async def toggle_account(client, query):
     else:
 
         asyncio.create_task(
-            start_account(acc)
+            start_account(client, acc)
         )
 
         text = "▶️ Account Resumed"
