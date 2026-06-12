@@ -66,7 +66,8 @@ class Database:
         api_id,
         api_hash,
         session,
-        url
+        url,
+        max_ref
     ):
 
         await self.accounts.insert_one(
@@ -79,7 +80,8 @@ class Database:
                 "paused": False,
                 "total_ref": 0,
                 "valid_ref": 0,
-                "reref": 0
+                "reref": 0,
+                "max_ref": max_ref
             }
         )
 
@@ -428,7 +430,8 @@ async def add_account(client, query):
         api_id=int(api_id),
         api_hash=api_hash,
         session=session,
-        url=url
+        url=url,
+        max_ref=max_ref
     )
 
     await msg.reply(
@@ -472,28 +475,204 @@ async def account_view(client, query):
     await query.message.reply(
         text,
         disable_web_page_preview=True,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⏸ Pause/Resume", callback_data=f"toggle_{acc_id}")],
+            [InlineKeyboardButton("📊 Manage Refers", callback_data=f"manageref_{acc_id}")],
+            [InlineKeyboardButton("🔢 Change Max Ref", callback_data=f"maxref_{acc_id}")],
+            [InlineKeyboardButton("🗑 Delete", callback_data=f"delete_{acc_id}")]
+        ])
+    )
+
+
+@Client.on_callback_query(filters.regex(r"^maxref_(.+)$"))
+async def change_max_ref(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    acc = await db.get_account(acc_id)
+
+    if not acc:
+        return await query.message.reply(
+            "Account not found."
+        )
+
+    await query.message.reply(
+        f"Current Max Ref: {acc.get('max_ref', 0)}\n\n"
+        "Send new maximum referral count:"
+    )
+
+    reply = await client.listen(
+        chat_id=query.message.chat.id,
+        user_id=query.from_user.id
+    )
+
+    try:
+        new_max = int(reply.text)
+
+    except Exception:
+        return await query.message.reply(
+            "Invalid number."
+        )
+
+    await db.accounts.update_one(
+        {"acc_id": acc_id},
+        {
+            "$set": {
+                "max_ref": new_max
+            }
+        }
+    )
+
+    await query.message.reply(
+        f"✅ Max Ref updated\n\n"
+        f"Account: `{acc_id}`\n"
+        f"New Limit: `{new_max}`"
+    )
+@Client.on_callback_query(filters.regex(r"^manageref_(.+)$"))
+async def manage_refers(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    await query.message.reply(
+        f"Manage Referrals\n\n"
+        f"Account: `{acc_id}`",
         reply_markup=InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        "⏸ Pause/Resume",
-                        callback_data=f"toggle_{acc_id}"
+                        "🗑 Remove All",
+                        callback_data=f"delallref_{acc_id}"
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        "🗑 Delete",
-                        callback_data=f"delete_{acc_id}"
+                        "🗑 Remove One",
+                        callback_data=f"deloneref_{acc_id}"
                     )
                 ]
             ]
         )
     )
 
+@Client.on_callback_query(filters.regex(r"^delallref_(.+)$"))
+async def delete_all_refers(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    await db.referrals.delete_many(
+        {"acc_id": acc_id}
+    )
+
+    await db.accounts.update_one(
+        {"acc_id": acc_id},
+        {
+            "$set": {
+                "total_ref": 0,
+                "valid_ref": 0,
+                "reref": 0
+            }
+        }
+    )
+
+    await query.message.reply(
+        f"✅ All referrals removed from `{acc_id}`"
+    )
 
 
+@Client.on_callback_query(filters.regex(r"^deloneref_(.+)$"))
+async def delete_one_ref_menu(client, query):
 
+    if query.from_user.id not in ADMINS:
+        return
 
+    acc_id = query.data.split("_", 1)[1]
+
+    refs = await db.get_referrals(acc_id)
+
+    if not refs:
+        return await query.message.reply(
+            "No referrals found."
+        )
+
+    text = ""
+
+    for i, ref in enumerate(refs, start=1):
+
+        status = (
+            "Valid"
+            if ref["valid"]
+            else "Re"
+        )
+
+        text += (
+            f"{i}. {ref['name']} "
+            f"(+{ref['stars']}) "
+            f"[{status}]\n"
+        )
+
+    text += "\nSend referral number to remove."
+
+    await query.message.reply(text)
+
+    reply = await client.listen(
+        chat_id=query.message.chat.id,
+        user_id=query.from_user.id
+    )
+
+    try:
+        index = int(reply.text)
+
+    except Exception:
+
+        return await query.message.reply(
+            "Invalid number."
+        )
+
+    if index < 1 or index > len(refs):
+
+        return await query.message.reply(
+            "Out of range."
+        )
+
+    ref = refs[index - 1]
+
+    await db.referrals.delete_one(
+        {"_id": ref["_id"]}
+    )
+
+    update = {
+        "$inc": {
+            "total_ref": -1
+        }
+    }
+
+    if ref["valid"]:
+
+        update["$inc"]["valid_ref"] = -1
+
+    else:
+
+        update["$inc"]["reref"] = -1
+
+    await db.accounts.update_one(
+        {"acc_id": acc_id},
+        update
+    )
+
+    await query.message.reply(
+        f"✅ Removed Referral\n\n"
+        f"👤 {ref['name']}\n"
+        f"⭐ +{ref['stars']}"
+        )
 
 import asyncio
 import re
@@ -805,10 +984,21 @@ async def refer_account(client, query):
             "Account not found."
         )
 
-    text = (
-        f"📱 Account: `{acc_id}`\n\n"
-        f"🔗 Link:\n{acc['url']}"
-    )
+    valid_ref = acc.get("valid_ref", 0)
+    max_ref = acc.get("max_ref", 4)
+
+    if valid_ref >= max_ref:
+        text = (
+            f"📱 Account: `{acc_id}`\n\n"
+            f"🔗 Link: Maximum Valid ReFer Reached, Please withdraw the amount"
+        )
+    else:
+        text = (
+            f"📱 Account: `{acc_id}`\n\n"
+            f"🔗 Link:\n{acc['url']}\n\n"
+            f"🍃 Valid Ref: {valid_ref}\n"
+            f"⚠️ Maximum Ref: {max_ref}"
+        )
 
     await query.message.reply(
         text,
