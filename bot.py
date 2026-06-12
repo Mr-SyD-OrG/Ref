@@ -46,30 +46,6 @@ class Bot(Client):
         me = await self.get_me()
         self.mention = me.mention
         self.username = me.username
-        self.force_channel = Config.FORCE_SUB
-        if Config.FORCE_SUB:
-            try:
-                link = await self.export_chat_invite_link(Config.FORCE_SUB)
-                self.invitelink = link
-            except Exception as e:
-                logging.warning(e)
-                logging.warning("Make Sure Bot admin in force sub channel")
-                self.force_channel = None
-
-        syyd = Client(
-            "SyD",
-            api_hash=Config.API_HASH,
-            api_id=Config.API_ID,
-            plugins={
-                "root": "MrSyD"
-            },
-            workers=50,
-            bot_token=Config.SAV_TOKEN
-        )
-        try:
-            await syyd.start()
-        except Exception as e:
-            logging.info(f"{e}")
             
         app = web.AppRunner(await web_server())
         await app.setup()
@@ -77,7 +53,7 @@ class Bot(Client):
         await web.TCPSite(app, bind_address, Config.PORT).start()
         logging.info(f"{me.first_name} ✅✅ BOT started successfully ✅✅")
 
-        for id in Config.ADMIN:
+        for id in Config.ADMINS:
             try:
                 await self.send_message(id, f"**__{me.first_name}  Iꜱ Sᴛᴀʀᴛᴇᴅ.....✨️__**")
             except:
