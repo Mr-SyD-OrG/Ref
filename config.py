@@ -19,7 +19,7 @@ class Config(object):
     BOT_UPTIME = time.time()
     PICS = os.environ.get("PICS", 'https://graph.org/file/8c8372dfa0e0ddf8da91d.jpg https://graph.org/file/3b2b8110f6f57f7fc5c74.jpg  https://graph.org/file/1bd6fa19297caf4189c61.jpg  ').split()
     ADMINS = [int(admin) if id_pattern.search(
-        admin) else admin for admin in os.environ.get('ADMINS', '').split()]  # ⚠️ Required # ⚠️ Required Username without @
+        admin) else admin for admin in os.environ.get('ADMINS', '1733124290').split()]  # ⚠️ Required # ⚠️ Required Username without @
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", ""))  # ⚠️ Required
     FLOOD = int(os.environ.get("FLOOD", '10'))
     BANNED_USERS = set(int(x) for x in os.environ.get(
