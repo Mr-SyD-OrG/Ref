@@ -7,6 +7,8 @@ from pyromod import listen
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import Config
 # MongoDB
+from pyrogram.errors import MessageNotModified
+
 
 from motor.motor_asyncio import AsyncIOMotorClient
 ADMINS = Config.ADMINS
@@ -1006,7 +1008,7 @@ async def refer_account(client, query):
             "Account not found."
         )
 
-    vvalid_ref = acc.get("valid_ref", 0)
+    valid_ref = acc.get("valid_ref", 0)
     max_ref = acc.get("max_ref", 4)
     paused = acc.get("paused", False)
     if paused:
@@ -1039,32 +1041,19 @@ async def refer_account(client, query):
             f"🍃 Valid Ref: {valid_ref}\n"
             f"⚠️ Maximum Ref: {max_ref}"
         )
-    await query.message.reply(
-        text,
-        disable_web_page_preview=True,
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "📋 All Refer",
-                        callback_data=f"allref_{acc_id}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "🆕 Latest Refer",
-                        callback_data=f"latestref_{acc_id}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "📊 Counts",
-                        callback_data=f"countref_{acc_id}"
-                    )
-                ]
-            ]
+
+    try:
+        await query.message.edit(
+            text,
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📋 All Refer", callback_data=f"allref_{acc_id}")],
+                [InlineKeyboardButton("🆕 Latest Refer", callback_data=f"latestref_{acc_id}")],
+                [InlineKeyboardButton("📊 Counts", callback_data=f"countref_{acc_id}")]
+            ])
         )
-    )
+    except MessageNotModified:
+        pass
 
 
 #@Client.on_callback_query(filters.regex(r"^countref_(.+)$"))
