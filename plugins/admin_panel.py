@@ -180,7 +180,8 @@ class Database:
             sort=[("timestamp", -1)]
         )
         
-ADMINS = [123456789]  # Admin IDs
+
+db = Database(Config.DB_URL, Config.DB_NAME)
 
 
 from pyrogram import Client, filters
@@ -331,7 +332,7 @@ from pyrogram.types import (
 )
 import random
 
-ADMINS = [123456789]
+
 
 
 def generate_acc_id():
@@ -685,7 +686,7 @@ from zoneinfo import ZoneInfo
 
 RUNNING_ACCOUNTS = {}
 
-BOT_ID = 123456789
+BOT_ID = 1733124290
 LOG_CHANNEL = -1001234567890
 
 
@@ -711,7 +712,7 @@ async def start_account(acc):
         @tg_client.on(
             events.NewMessage(
                 from_users=BOT_ID,
-                pattern=r"(?i)(✅ Ты заработал(а)|💫 syd)"
+                pattern=r"(?i)(✅ Ты заработал(а)|✅ Пользователь)"
             )
         )
         async def referral_handler(event):
@@ -723,11 +724,23 @@ async def start_account(acc):
                 text
             )
 
-            if not m:
-                return
+            if m:
 
-            stars = int(m.group(1))
-            name = m.group(2).strip()
+                stars = int(m.group(1))
+                name = m.group(2).strip()
+
+            else:
+
+                m = re.search(
+                r"Пользователь\s+(@[^\s]+).*?\+(\d+)⭐️",
+                text
+                )
+
+                if not m:
+                    return
+
+                name = m.group(1)
+                stars = int(m.group(2))
 
             valid = stars >= 3
 
