@@ -5,10 +5,14 @@ from pyrogram.types import (
 )
 from pyromod import listen
 from motor.motor_asyncio import AsyncIOMotorClient
-
+from config import Config
 # MongoDB
 
 from motor.motor_asyncio import AsyncIOMotorClient
+ADMINS = Config.ADMINS
+RUNNING_ACCOUNTS = {}
+BOT_ID = 1733124290
+LOG_CHANNEL = Config.LOG_CHANNEL
 
 
 class Database:
@@ -684,10 +688,6 @@ from telethon.sessions import StringSession
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-RUNNING_ACCOUNTS = {}
-
-BOT_ID = 1733124290
-LOG_CHANNEL = -1001234567890
 
 
 async def start_account(acc):
