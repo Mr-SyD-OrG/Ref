@@ -10,19 +10,16 @@ class Config(object):
     API_ID = os.environ.get("API_ID", "")  # ⚠️ Required
     API_HASH = os.environ.get("API_HASH", "")  # ⚠️ Required
     BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-    SAV_TOKEN = os.environ.get("SAV_TOKEN", "")  # ⚠️ Required
-
+    
     # database config
-    DB_NAME = os.environ.get("DB_NAME", "Sigma_Rename")
+    DB_NAME = os.environ.get("DB_NAME", "Sime")
     DB_URL = os.environ.get("DB_URL", "")  # ⚠️ Required
 
     # other configs
     BOT_UPTIME = time.time()
     PICS = os.environ.get("PICS", 'https://graph.org/file/8c8372dfa0e0ddf8da91d.jpg https://graph.org/file/3b2b8110f6f57f7fc5c74.jpg  https://graph.org/file/1bd6fa19297caf4189c61.jpg  ').split()
-    ADMIN = [int(admin) if id_pattern.search(
-        admin) else admin for admin in os.environ.get('ADMIN', '').split()]  # ⚠️ Required
-
-    FORCE_SUB = os.environ.get("FORCE_SUB", "") # ⚠️ Required Username without @
+    ADMINS = [int(admin) if id_pattern.search(
+        admin) else admin for admin in os.environ.get('ADMINS', '').split()]  # ⚠️ Required # ⚠️ Required Username without @
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", ""))  # ⚠️ Required
     FLOOD = int(os.environ.get("FLOOD", '10'))
     BANNED_USERS = set(int(x) for x in os.environ.get(
