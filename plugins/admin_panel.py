@@ -87,7 +87,8 @@ class Database:
                 "total_ref": 0,
                 "valid_ref": 0,
                 "reref": 0,
-                "max_ref": max_ref
+                "max_ref": max_ref,
+                "owner_id": None,
             }
         )
 
@@ -96,6 +97,21 @@ class Database:
         return await self.accounts.find_one(
             {"acc_id": acc_id}
         )
+
+    async def assign_account(self, acc_id, user_id):
+
+        await self.accounts.update_one(
+            {"acc_id": acc_id},
+            {
+                "$set": {
+                    "owner_id": user_id
+                }
+            }
+        )
+
+    async def get_user_accounts(self, user_id):
+
+        return await self.accounts.find({"owner_id": user_id}).to_list(length=None)
 
     async def get_accounts(self):
 
@@ -485,6 +501,7 @@ async def account_view(client, query):
         f"Total: {acc.get('total_ref', 0)}\n"
         f"Valid: {acc.get('valid_ref', 0)}\n"
         f"Re-Refer: {acc.get('reref', 0)}"
+        f"👤 Owner: `{acc.get('owner_id', 'None')}`\n"
     )
 
     await query.message.reply(
@@ -492,6 +509,7 @@ async def account_view(client, query):
         disable_web_page_preview=True,
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("⏸ Pause/Resume", callback_data=f"toggle_{acc_id}")],
+            [InlineKeyboardButton("👤 Assign User", callback_data=f"assign_{acc_id}")],
             [InlineKeyboardButton("📊 Manage Refers", callback_data=f"manageref_{acc_id}")],
             [InlineKeyboardButton("🔢 Change Max Ref", callback_data=f"maxref_{acc_id}")],
             [InlineKeyboardButton("🗑 Delete", callback_data=f"delete_{acc_id}")]
@@ -499,6 +517,48 @@ async def account_view(client, query):
     )
 
 
+@Client.on_callback_query(filters.regex(r"^assign_(.+)$"))
+async def assign_user(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    await query.message.reply(
+        "Send verified user ID:"
+    )
+
+    reply = await client.listen(
+        chat_id=query.message.chat.id,
+        user_id=query.from_user.id
+    )
+
+    try:
+        user_id = int(reply.text)
+
+    except:
+        return await query.message.reply(
+            "Invalid user ID."
+        )
+
+    if not await db.is_verified(user_id):
+
+        return await query.message.reply(
+            "User is not verified."
+        )
+
+    await db.assign_account(
+        acc_id,
+        user_id
+    )
+
+    await query.message.reply(
+        f"✅ Assigned\n\n"
+        f"Account: `{acc_id}`\n"
+        f"User: `{user_id}`"
+    )
+    
 @Client.on_callback_query(filters.regex(r"^maxref_(.+)$"))
 async def change_max_ref(client, query):
 
@@ -546,6 +606,7 @@ async def change_max_ref(client, query):
         f"Account: `{acc_id}`\n"
         f"New Limit: `{new_max}`"
     )
+    
 @Client.on_callback_query(filters.regex(r"^manageref_(.+)$"))
 async def manage_refers(client, query):
 
@@ -953,10 +1014,11 @@ async def refer_cmd(client, message):
             "❌ Access denied."
         )
 
-    accounts = await db.get_accounts()
-
+    if user_id in ADMINS:
+        accounts = await db.get_accounts()
+    else:
+        accounts = await db.get_user_accounts(user_id)
     if not accounts:
-
         return await message.reply(
             "No accounts found."
         )
@@ -987,11 +1049,8 @@ async def refer_account(client, query):
 
     user_id = query.from_user.id
 
-    if (
-        user_id not in ADMINS
-        and not await db.is_verified(user_id)
-    ):
-        return
+    if (user_id not in ADMINS and acc.get("owner_id") != user_id):
+        return await query.answer("Access denied.", show_alert=True)
 
     acc_id = query.data.split(
         "_",
