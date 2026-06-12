@@ -1174,7 +1174,7 @@ async def referral_count(client, query):
 
 
 
-ADMIN_USERNAME = "YourAdminUsername"
+ADMIN_USERNAME = "Syd_XyZ"
 
 
 @Client.on_callback_query(filters.regex(r"^withdraw_(.+)$"))
@@ -1202,4 +1202,84 @@ async def withdraw_info(client, query):
                 ]
             ]
         )
+    )
+
+
+import re
+
+
+
+FRUIT_EMOJIS = {
+    "яблоко": "🍎",
+    "клубника": "🍓",
+    "банан": "🍌",
+    "апельсин": "🍊",
+    "лимон": "🍋",
+    "арбуз": "🍉",
+    "вишня": "🍒",
+    "виноград": "🍇",
+    "персик": "🍑",
+    "груша": "🍐",
+    "ананас": "🍍",
+    "киви": "🥝",
+    "манго": "🥭",
+    "кокос": "🥥",
+    "черника": "🫐",
+}
+
+
+@Client.on_message(filters.forwarded)
+async def fruit_checker(client, message):
+
+    if not message.forward_from:
+
+        return
+
+    if message.forward_from.id != BOT_ID:
+
+        return
+
+    text = message.text or message.caption or ""
+
+    if not text.startswith(
+        "🤖 ПРОВЕРКА НА РОБОТА"
+    ):
+        return
+
+    fruit_match = re.search(
+        r'«(.*?)»',
+        text
+    )
+
+    if not fruit_match:
+        return
+
+    fruit_name = re.sub(
+        r'[^а-яё]',
+        '',
+        fruit_match.group(1).lower()
+    )
+
+    fruit_name = re.sub(
+        r'[\u200b\u200c\u200d\ufeff\xa0]',
+        '',
+        fruit_name
+    )
+
+    fruit_emoji = FRUIT_EMOJIS.get(
+        fruit_name
+    )
+
+    if not fruit_emoji:
+
+        return await message.reply(
+            f"Unknown fruit:\n`{fruit_name}`"
+        )
+
+    await message.reply(
+        f"Press: {fruit_emoji}"
+    )
+
+    await message.reply(
+        fruit_emoji
     )
