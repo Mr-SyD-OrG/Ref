@@ -491,6 +491,181 @@ async def account_view(client, query):
     )
 
 
+
+
+
+
+import asyncio
+import re
+
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
+
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+RUNNING_ACCOUNTS = {}
+
+BOT_ID = 123456789
+LOG_CHANNEL = -1001234567890
+
+
+async def start_account(acc):
+
+    acc_id = acc["acc_id"]
+
+    if acc_id in RUNNING_ACCOUNTS:
+        return False
+
+    try:
+
+        tg_client = TelegramClient(
+            StringSession(acc["session"]),
+            acc["api_id"],
+            acc["api_hash"]
+        )
+
+        await tg_client.start()
+
+        RUNNING_ACCOUNTS[acc_id] = tg_client
+
+        @tg_client.on(
+            events.NewMessage(
+                from_users=BOT_ID
+            )
+        )
+        async def referral_handler(event):
+
+            text = event.raw_text
+
+            m = re.search(
+                r"\+(\d+)⭐️,\s*(.*?)\s+активировал",
+                text
+            )
+
+            if not m:
+                return
+
+            stars = int(m.group(1))
+            name = m.group(2).strip()
+
+            valid = stars >= 3
+
+            now = datetime.now(
+                ZoneInfo("Asia/Kolkata")
+            )
+
+            await db.add_referral(
+                acc_id=acc_id,
+                name=name,
+                stars=stars,
+                valid=valid,
+                timestamp=now.timestamp()
+            )
+
+            status = (
+                "✅ Valid Refer"
+                if valid
+                else "♻️ Re-Refer"
+            )
+
+            ist_time = now.strftime(
+                "%d-%m-%Y %I:%M:%S %p"
+            )
+
+            await app.send_message(
+                LOG_CHANNEL,
+                f"📱 Account: {acc_id}\n"
+                f"👤 Name: {name}\n"
+                f"⭐ Stars: +{stars}\n"
+                f"📌 Status: {status}\n"
+                f"🕒 IST: {ist_time}"
+            )
+
+        asyncio.create_task(
+            tg_client.run_until_disconnected()
+        )
+
+        return True
+
+    except Exception as e:
+
+        print(
+            f"Failed to start {acc_id}: {e}"
+        )
+
+        return False
+
+
+async def start_all_accounts():
+
+    accounts = await db.get_active_accounts()
+
+    started = 0
+
+    for acc in accounts:
+
+        if await start_account(acc):
+            started += 1
+
+    return started
+
+from pyrogram import Client, filters
+
+@Client.on_message(
+    filters.command("startacc")
+)
+async def startacc_cmd(client, message):
+
+    if message.from_user.id not in ADMINS:
+        return
+
+    count = await start_all_accounts()
+
+    await message.reply(
+        f"✅ Started {count} account(s)\n\n"
+        f"Running: {len(RUNNING_ACCOUNTS)}"
+    )
+
+
+
+
+@Client.on_callback_query(filters.regex(r"^delete_(.+)$"))
+async def delete_account(client, query):
+
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    tg_client = RUNNING_ACCOUNTS.get(
+        acc_id
+    )
+
+    if tg_client:
+
+        try:
+
+            await tg_client.disconnect()
+
+        except Exception:
+            pass
+
+        RUNNING_ACCOUNTS.pop(
+            acc_id,
+            None
+        )
+
+    await db.delete_account(acc_id)
+
+    await query.message.reply(
+        f"🗑 Account Deleted\n\n"
+        f"ID: `{acc_id}`"
+    )
+
+    await query.answer()
+
+
 @Client.on_callback_query(filters.regex(r"^toggle_(.+)$"))
 async def toggle_account(client, query):
 
@@ -515,27 +690,37 @@ async def toggle_account(client, query):
         new_state
     )
 
+    if new_state:
+
+        tg_client = RUNNING_ACCOUNTS.get(
+            acc_id
+        )
+
+        if tg_client:
+
+            try:
+
+                await tg_client.disconnect()
+
+            except Exception:
+                pass
+
+            RUNNING_ACCOUNTS.pop(
+                acc_id,
+                None
+            )
+
+        text = "⏸ Account Paused"
+
+    else:
+
+        asyncio.create_task(
+            start_account(acc)
+        )
+
+        text = "▶️ Account Resumed"
+
     await query.answer(
-        "⏸ Account Paused"
-        if new_state
-        else "▶️ Account Resumed",
+        text,
         show_alert=True
     )
-
-
-@Client.on_callback_query(filters.regex(r"^delete_(.+)$"))
-async def delete_account(client, query):
-
-    if query.from_user.id not in ADMINS:
-        return
-
-    acc_id = query.data.split("_", 1)[1]
-
-    await db.delete_account(acc_id)
-
-    await query.message.reply(
-        f"🗑 Account Deleted\n\n"
-        f"ID: `{acc_id}`"
-    )
-
-    await query.answer()
