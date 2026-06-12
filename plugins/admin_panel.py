@@ -185,7 +185,7 @@ class Database:
         )
         
 
-db = Database(Config.DB_URL, Config.DB_NAME)
+db = Database(Config.DB_URL)
 
 
 from pyrogram import Client, filters
