@@ -783,7 +783,7 @@ async def start_account(client, acc):
         @tg_client.on(
             events.NewMessage(
                 from_users=BOT_ID,
-                pattern=r"(?i)(✅ Ты заработала|✅ Пользователь|💰)"
+                pattern=r"(?i)(✅ Ты заработала|✅ Пользователь|💰|❗️Твой друг)"
             )
         )
         async def referral_handler(event):
@@ -794,9 +794,21 @@ async def start_account(client, acc):
                 r"\+(\d+)⭐️,\s*(.*?)\s+активировал",
                 text
             )
+            inv = re.search(r"Твой друг,\s*(@[^\s,]+)", text)
+            if inv:
+                name = inv.group(1)
+                owner_id = (await db.get_account(acc_id)).get("owner_id")
+
+                if owner_id:
+                    try:
+                        await client.send_message(owner_id, f"⚠️ User Already Using Bot\n\n👤 {name}")
+                    except:
+                        pass
+
+                await client.send_message(LOG_CHANNEL, f"📱 Account: {acc_id}\n👤 {name}\n❌ Already Using Bot")
+                return
 
             if m:
-
                 stars = int(m.group(1))
                 name = m.group(2).strip()
 
