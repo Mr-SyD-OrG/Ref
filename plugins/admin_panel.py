@@ -616,26 +616,14 @@ async def manage_refers(client, query):
     acc_id = query.data.split("_", 1)[1]
 
     await query.message.reply(
-        f"Manage Referrals\n\n"
-        f"Account: `{acc_id}`",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🗑 Remove All",
-                        callback_data=f"delallref_{acc_id}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "🗑 Remove One",
-                        callback_data=f"deloneref_{acc_id}"
-                    )
-                ]
-            ]
-        )
+        f"Manage Referrals\n\nAccount: `{acc_id}`",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("➕ Add One", callback_data=f"addref_{acc_id}")],
+            [InlineKeyboardButton("🗑 Remove All", callback_data=f"delallref_{acc_id}")],
+            [InlineKeyboardButton("🗑 Remove One", callback_data=f"deloneref_{acc_id}")]
+        ])
     )
-
+    
 @Client.on_callback_query(filters.regex(r"^delallref_(.+)$"))
 async def delete_all_refers(client, query):
 
@@ -663,7 +651,39 @@ async def delete_all_refers(client, query):
         f"✅ All referrals removed from `{acc_id}`"
     )
 
+@Client.on_callback_query(filters.regex(r"^addref_(.+)$"))
+async def add_ref(client, query):
 
+    if query.from_user.id not in ADMINS:
+        return
+
+    acc_id = query.data.split("_", 1)[1]
+
+    await query.message.reply(
+        "Send referral name:"
+    )
+
+    name = (
+        await client.listen(
+            chat_id=query.message.chat.id,
+            user_id=query.from_user.id
+        )
+    ).text.strip()
+
+    await db.add_referral(
+        acc_id=acc_id,
+        name=name,
+        stars=3,
+        valid=True,
+        timestamp=time.time()
+    )
+
+    await query.message.reply(
+        f"✅ Added Referral\n\n"
+        f"👤 {name}\n"
+        f"⭐ +3"
+    )
+    
 @Client.on_callback_query(filters.regex(r"^deloneref_(.+)$"))
 async def delete_one_ref_menu(client, query):
 
