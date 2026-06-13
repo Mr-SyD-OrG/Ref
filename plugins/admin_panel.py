@@ -1049,19 +1049,18 @@ async def refer_account(client, query):
 
     user_id = query.from_user.id
     await query.message.edit("■ □ □")
-
-    if (user_id not in ADMINS and acc.get("owner_id") != user_id):
-        return await query.answer("Access denied.", show_alert=True)
-
     acc_id = query.data.split(
         "_",
         1
     )[1]
-
     acc = await db.get_account(
         acc_id
     )
 
+    if (user_id not in ADMINS and acc.get("owner_id") != user_id):
+        return await query.answer("Access denied.", show_alert=True)
+
+    
     if not acc:
 
         return await query.message.reply(
