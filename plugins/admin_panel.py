@@ -1048,6 +1048,7 @@ async def refer_cmd(client, message):
 async def refer_account(client, query):
 
     user_id = query.from_user.id
+    await query.message.edit("■ □ □")
 
     if (user_id not in ADMINS and acc.get("owner_id") != user_id):
         return await query.answer("Access denied.", show_alert=True)
@@ -1066,6 +1067,8 @@ async def refer_account(client, query):
         return await query.message.reply(
             "Account not found."
         )
+
+    await query.message.edit("■ ■ □")
 
     valid_ref = int(acc.get("valid_ref", 0))
     max_ref = int(acc.get("max_ref", 4))
@@ -1100,6 +1103,8 @@ async def refer_account(client, query):
             f"🍃 Valid Ref: {valid_ref}\n"
             f"⚠️ Maximum Ref: {max_ref}"
         )
+
+    await query.message.edit("■ ■ ■")
 
     try:
         await query.message.edit(
