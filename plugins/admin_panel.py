@@ -804,7 +804,7 @@ async def start_account(client, acc):
         @tg_client.on(
             events.NewMessage(
                 from_users=BOT_ID,
-                pattern=r"(?i)(✅ Ты заработала|✅ Пользователь|💰|❗️Твой друг)"
+                pattern=r"(✅ Ты заработал|✅ Пользователь|💰|❗️Твой друг)"
             )
         )
         async def referral_handler(event):
