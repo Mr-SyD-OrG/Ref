@@ -8,6 +8,7 @@ Pillow
 aiohttp
 pytz
 humanize
-pyromod
+pyrofork
+#pyromod
 ffmpeg-python
 psutil
