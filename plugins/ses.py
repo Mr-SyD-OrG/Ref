@@ -75,11 +75,13 @@ async def generate_session(bot, message):
         return
 
     phone = phone.text.strip()
+    api_id = int(id.text.strip())
+    api_hash = hash.text.strip()
 
     client = TelegramClient(
         StringSession(),
-        int(id),
-        hash
+        api_id,
+        api_hash
     )
 
     await client.connect()
