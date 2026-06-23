@@ -42,13 +42,44 @@ async def generate_session(bot, message):
 
     if await cancelled(phone):
         return
+        
+
+    try:
+        id = await bot.ask(
+            user_id,
+            "Send your id.\n\nExample: `+911234567890`",
+            timeout=300
+        )
+    except ListenerTimeout:
+        return await bot.send_message(
+            user_id,
+            "Timed out after 5 minutes."
+        )
+
+    if await cancelled(id):
+        return
+        
+    try:
+        hash = await bot.ask(
+            user_id,
+            "Send your hash.\n\nExample: `+911234567890`",
+            timeout=300
+        )
+    except ListenerTimeout:
+        return await bot.send_message(
+            user_id,
+            "Timed out after 5 minutes."
+        )
+
+    if await cancelled(hash):
+        return
 
     phone = phone.text.strip()
 
     client = TelegramClient(
         StringSession(),
-        Config.API_ID,
-        Config.API_HASH
+        int(id),
+        hash
     )
 
     await client.connect()
