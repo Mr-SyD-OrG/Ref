@@ -13,7 +13,7 @@ import asyncio
 import os
 from threading import Thread
 from time import sleep
-import pyromod
+#import pyromod
 
 
 if not os.path.exists("received_files"):
