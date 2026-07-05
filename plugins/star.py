@@ -115,3 +115,129 @@ async def checkpre(client, message):
     await message.reply(
         f"`{inspect.signature(PreCheckoutQuery.answer)}`"
     )
+
+@Client.on_message(filters.command("balance") & filters.user(ADMIN_ID))
+async def balance_cmd(client, message):
+    async with aiohttp.ClientSession() as session:
+        r = await session.get(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/getMyStarBalance"
+        )
+
+        data = await r.json()
+
+    if not data.get("ok"):
+        return await message.reply(
+            f"❌ Error\n\n`{data}`"
+        )
+
+    balance = data["result"]["amount"]
+
+    await message.reply(
+        f"⭐ Star Balance: `{balance}`"
+    )
+
+
+
+async def get_available_gifts():
+    async with aiohttp.ClientSession() as session:
+        r = await session.get(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/getAvailableGifts"
+        )
+        return await r.json()
+
+
+async def send_gift(user_id, gift_id):
+    async with aiohttp.ClientSession() as session:
+        r = await session.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendGift",
+            json={
+                "user_id": user_id,
+                "gift_id": gift_id
+            }
+        )
+        return await r.json()
+
+
+@Client.on_message(filters.command("gift") & filters.user(ADMIN_ID))
+async def gift_cmd(client, message):
+    try:
+        ask = await client.ask(
+            message.chat.id,
+            "🎁 Send target user ID:",
+            timeout=120
+        )
+
+        if not ask.text.isdigit():
+            return await message.reply("❌ Invalid ID")
+
+        target_id = int(ask.text)
+
+        data = await get_available_gifts()
+
+        if not data.get("ok"):
+            return await message.reply(
+                f"❌ Failed to fetch gifts\n\n`{data}`"
+            )
+
+        gifts = data["result"]["gifts"]
+
+        txt = (
+            f"🎯 Target: `{target_id}`\n\n"
+            "Available Gifts:\n\n"
+        )
+
+        gift_map = {}
+
+        for i, gift in enumerate(gifts, start=1):
+            gift_id = gift["id"]
+            stars = gift.get("star_count", "?")
+
+            gift_map[str(i)] = gift_id
+
+            txt += (
+                f"`{i}` → Gift ID: `{gift_id}` "
+                f"({stars}⭐)\n"
+            )
+
+        txt += "\nSend the number of the gift to send."
+
+        choose = await client.ask(
+            message.chat.id,
+            txt,
+            timeout=300
+        )
+
+        if choose.text not in gift_map:
+            return await message.reply(
+                "❌ Invalid selection"
+            )
+
+        selected_gift = gift_map[choose.text]
+
+        confirm = await client.ask(
+            message.chat.id,
+            f"⚠️ Confirm sending gift?\n\n"
+            f"Target: `{target_id}`\n"
+            f"Gift: `{selected_gift}`\n\n"
+            f"Reply with `YES`",
+            timeout=120
+        )
+
+        if confirm.text.upper() != "YES":
+            return await message.reply(
+                "❌ Cancelled"
+            )
+
+        result = await send_gift(
+            user_id=target_id,
+            gift_id=selected_gift
+        )
+
+        await message.reply(
+            f"📨 Result:\n\n`{result}`"
+        )
+
+    except Exception as e:
+        await message.reply(
+            f"❌ Error\n\n`{e}`"
+    )
