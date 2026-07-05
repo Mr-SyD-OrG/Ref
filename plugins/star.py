@@ -72,7 +72,7 @@ async def star_cmd(client, message):
 @Client.on_pre_checkout_query()
 async def pre_checkout(client, query):
     try:
-        await query.answer(ok=True)
+        await query.answer(True)
 
         await client.send_message(
             ADMIN_ID,
