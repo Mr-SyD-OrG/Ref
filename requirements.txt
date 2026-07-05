@@ -1,8 +1,9 @@
-pyrogram==2.0.80
+pyrotgfork
 TgCrypto
 motor
 dnspython
 hachoir
+pyrotgfork
 telethon
 Pillow
 aiohttp
