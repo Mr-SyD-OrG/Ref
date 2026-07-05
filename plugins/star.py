@@ -106,3 +106,12 @@ async def successful_payment(client, message):
         f"🧾 Charge ID:\n"
         f"`{payment.telegram_payment_charge_id}`"
     )
+
+
+@Client.on_message(filters.command("checkpre"))
+async def checkpre(client, message):
+    from pyrogram.types import PreCheckoutQuery
+    import inspect
+    await message.reply(
+        f"`{inspect.signature(PreCheckoutQuery.answer)}`"
+    )
