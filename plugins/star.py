@@ -6,7 +6,7 @@ BOT_TOKEN = Config.BOT_TOKEN
 ADMIN_ID = 1733124290  # Replace with your Telegram ID
 
 from pyrogram import Client, filters
-from pyromod import listen
+#from pyromod import listen
 import aiohttp
 
 
