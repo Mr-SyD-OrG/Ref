@@ -70,8 +70,27 @@ async def star_cmd(client, message):
 
 
 @Client.on_pre_checkout_query()
-async def pre_checkout(_, query):
-    await query.answer(ok=True)
+async def pre_checkout(client, query):
+    try:
+        await client.send_message(
+            ADMIN_ID,
+            f"✅ PRECHECKOUT RECEIVED\n\n"
+            f"User: {query.from_user.id}\n"
+            f"Payload: {query.invoice_payload}"
+        )
+
+        await query.answer(ok=True)
+
+        await client.send_message(
+            ADMIN_ID,
+            "✅ PRECHECKOUT ANSWERED"
+        )
+
+    except Exception as e:
+        await client.send_message(
+            ADMIN_ID,
+            f"❌ PRECHECKOUT ERROR\n\n`{e}`"
+        )
 
 
 @Client.on_message(filters.successful_payment)
