@@ -12,13 +12,11 @@ from pyrogram.types import (
 )
 
 
+
 from pyrogram import Client, filters
-from pyrogram.types import (
-    LabeledPrice,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
-)
+from pyrogram.types import LabeledPrice
 #from pyromod import listen
+  # Replace with your Telegram ID
 
 
 @Client.on_message(filters.command("star") & filters.private)
@@ -28,10 +26,6 @@ async def star_cmd(client, message):
             message.chat.id,
             "⭐ Enter the number of Stars:",
             timeout=120
-        )
-
-        await message.reply(
-            f"✅ Debug 1\nReceived: `{ask.text}`"
         )
 
         if not ask.text.isdigit():
@@ -46,50 +40,34 @@ async def star_cmd(client, message):
                 "❌ Amount must be between 1 and 2500."
             )
 
-        await message.reply(
-            f"✅ Debug 2\nAmount: `{amount}`"
-        )
-
-        kb = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        text=f"Pay ⭐️ {amount}",
-                        pay=True
+        try:
+            await client.send_invoice(
+                chat_id=message.chat.id,
+                title=f"{amount} Telegram Stars",
+                description=f"Purchase {amount} Telegram Stars",
+                payload=f"stars_{message.from_user.id}_{amount}",
+                currency="XTR",
+                prices=[
+                    LabeledPrice(
+                        label="XTR",
+                        amount=amount
                     )
-                ]
-            ]
-        )
+                ],
+                provider_token=""
+            )
 
-        await message.reply(
-            "✅ Debug 3\nSending invoice..."
-        )
-
-        await client.send_invoice(
-            chat_id=message.chat.id,
-            title=f"{amount} Telegram Stars",
-            description=f"Purchase {amount} Telegram Stars",
-            payload=f"stars_{message.from_user.id}_{amount}",
-            currency="XTR",
-            prices=[
-                LabeledPrice(
-                    label="XTR",
-                    amount=amount
-                )
-            ],
-            provider_token="",
-            reply_markup=kb
-        )
-
-        await message.reply(
-            "✅ Debug 4\nInvoice sent successfully."
-        )
+        except Exception as e:
+            await message.reply(
+                f"❌ Invoice Error\n\n"
+                f"Type: `{type(e).__name__}`\n\n"
+                f"`{repr(e)}`"
+            )
 
     except Exception as e:
         await message.reply(
-            f"❌ ERROR\n\n"
+            f"❌ Handler Error\n\n"
             f"Type: `{type(e).__name__}`\n\n"
-            f"Text:\n`{e}`"
+            f"`{repr(e)}`"
         )
 
 
@@ -98,9 +76,7 @@ async def pre_checkout(_, query):
     try:
         await query.answer(ok=True)
     except Exception as e:
-        await query.message.reply(
-            f"❌ PreCheckout Error\n`{e}`"
-        )
+        print(f"PreCheckout Error: {e}")
 
 
 @Client.on_message(filters.successful_payment)
@@ -127,5 +103,6 @@ async def successful_payment(client, message):
 
     except Exception as e:
         await message.reply(
-            f"❌ Payment Handler Error\n\n`{e}`"
+            f"❌ Payment Error\n\n"
+            f"`{repr(e)}`"
         )
