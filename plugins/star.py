@@ -4,63 +4,80 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 ADMIN_ID = 1733124290  # Replace with your Telegram ID
 
-# Store pending payments
-PENDING_STARS = {}
+from pyrogram import Client, filters
+from pyrogram.types import (
+    LabeledPrice,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
 
 
 @Client.on_message(filters.command("star") & filters.private)
 async def star_cmd(client, message):
     ask = await client.ask(
         message.chat.id,
-        "⭐ Enter the number of stars you want to purchase:",
-        timeout=120
+        "⭐ Enter the number of Stars:"
     )
 
     if not ask.text.isdigit():
-        return await message.reply("❌ Please enter a valid number.")
+        return await message.reply("❌ Invalid amount.")
 
-    stars = int(ask.text)
+    amount = int(ask.text)
 
-    purchase_msg = await message.reply_invoice(
-        title=f"{stars} Telegram Stars",
-        description=f"Purchase of {stars} Telegram Stars",
-        currency="XTR",
-        prices=[{"label": f"{stars} Stars", "amount": stars}],
-        payload=f"stars_{message.from_user.id}_{stars}"
+    if not 1 <= amount <= 2500:
+        return await message.reply(
+            "❌ Amount must be between 1 and 2500."
+        )
+
+    kb = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    text=f"Pay ⭐️ {amount}",
+                    pay=True
+                )
+            ]
+        ]
     )
 
-    PENDING_STARS[f"stars_{message.from_user.id}_{stars}"] = {
-        "user_id": message.from_user.id,
-        "stars": stars
-    }
+    await client.send_invoice(
+        chat_id=message.chat.id,
+        title=f"{amount} Telegram Stars",
+        description=f"Purchase {amount} Telegram Stars",
+        payload=f"stars_{message.from_user.id}_{amount}",
+        currency="XTR",
+        prices=[
+            LabeledPrice(
+                label="XTR",
+                amount=amount
+            )
+        ],
+        provider_token="",
+        reply_markup=kb
+    )
 
 
 @Client.on_pre_checkout_query()
-async def pre_checkout(client, query):
+async def pre_checkout(_, query):
     await query.answer(ok=True)
 
 
 @Client.on_message(filters.successful_payment)
-async def payment_success(client, message):
-    payload = message.successful_payment.invoice_payload
-
-    data = PENDING_STARS.get(payload)
-    if not data:
-        return
-
-    user = message.from_user
+async def successful_payment(client, message):
+    payment = message.successful_payment
 
     await message.reply(
-        f"✅ Payment received!\n\n"
-        f"⭐ Stars: {data['stars']}"
+        "✅ Payment successful!\n\n"
+        f"🧾 Transaction ID:\n"
+        f"`{payment.telegram_payment_charge_id}`"
     )
 
     await client.send_message(
         ADMIN_ID,
-        f"💰 New Star Purchase\n\n"
-        f"👤 User: {user.mention}\n"
-        f"🆔 ID: `{user.id}`\n"
-        f"⭐ Amount: {data['stars']}"
+        f"💰 New Stars Purchase\n\n"
+        f"👤 User: {message.from_user.mention}\n"
+        f"🆔 ID: `{message.from_user.id}`\n"
+        f"⭐ Amount: {payment.total_amount}\n"
+        f"🧾 Charge ID:\n"
+        f"`{payment.telegram_payment_charge_id}`"
     )
-
-    PENDING_STARS.pop(payload, None)
