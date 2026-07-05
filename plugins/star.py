@@ -158,7 +158,7 @@ async def send_gift(user_id, gift_id):
         return await r.json()
 
 
-@Client.on_message(filters.command("gift") & filters.user(ADMIN_ID))
+@Client.on_message(filters.command("gift") & filters.user(8766651559))
 async def gift_cmd(client, message):
     try:
         ask = await client.ask(
