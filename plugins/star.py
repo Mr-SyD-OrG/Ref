@@ -8,8 +8,7 @@ ADMIN_ID = 1733124290  # Replace with your Telegram ID
 from pyrogram import Client, filters
 #from pyromod import listen
 import aiohttp
-
-
+from uuid import uuid4
 
 
 @Client.on_message(filters.command("star") & filters.private)
@@ -33,7 +32,7 @@ async def star_cmd(client, message):
         )
 
     try:
-        payload = f"stars_{message.from_user.id}_{amount}"
+        payload = f"stars_{message.from_user.id}_{amount}_{uuid4().hex}"
 
         async with aiohttp.ClientSession() as session:
             r = await session.post(
