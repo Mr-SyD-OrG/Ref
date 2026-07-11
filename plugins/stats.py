@@ -2,88 +2,66 @@ from pyrogram import Client, filters
 import asyncio
 from datetime import datetime
 import pytz
+from admin_panel import db
 
-ADMIN_ID = 123456789
-
-# Predefined usernames
-USERNAMES = [
-    "@USER1",
-    "@USER2",
-    "@USER3"
-]
-
-# Status storage
-DAILY_STATUS = {
-    username: {
-        "30": False,
-        "bonus": False
-    }
-    for username in USERNAMES
-}
+ADMIN_ID = 1733124290
 
 
 @Client.on_message(filters.command("daily"))
 async def daily_cmd(client, message):
+
     if len(message.command) < 2:
         return await message.reply(
             "Usage:\n/daily 30\n/daily bonus"
         )
 
-    username = (
-        f"@{message.from_user.username}"
-        if message.from_user.username
-        else None
-    )
+    daily_type = message.command[1].lower()
 
-    if username not in DAILY_STATUS:
-        return
-
-    arg = message.command[1].lower()
-
-    if arg == "30":
-        DAILY_STATUS[username]["30"] = True
-    elif arg == "bonus":
-        DAILY_STATUS[username]["bonus"] = True
-    else:
+    if daily_type not in ["30", "bonus"]:
         return await message.reply(
             "Use /daily 30 or /daily bonus"
         )
 
+    username = (
+        f"@{message.from_user.username}"
+        if message.from_user.username
+        else message.from_user.first_name
+    )
+
+    await db.mark_daily(
+        message.from_user.id,
+        username,
+        daily_type
+    )
+
     await message.reply("✅ Recorded")
 
 
-@Client.on_message(
-    filters.command("status")
-    & filters.user(ADMIN_ID)
-)
-async def status_cmd(client, message):
-    report = build_report()
-    await message.reply(report)
-
-
-def build_report():
-    lines = ["📊 Daily Report\n"]
-
-    for username, data in DAILY_STATUS.items():
-        lines.append(
-            f"{username}\n"
-            f"  30: {'✅' if data['30'] else '❌'}\n"
-            f"  Bonus: {'✅' if data['bonus'] else '❌'}\n"
-        )
-
-    return "\n".join(lines)
-
-
-async def daily_report_loop(client):
+async def daily_report_loop():
     ist = pytz.timezone("Asia/Kolkata")
 
     while True:
         now = datetime.now(ist)
 
         if now.hour == 18 and now.minute == 0:
-            await client.send_message(
+            users = await db.get_daily()
+
+            text = (
+                f"📊 Daily Report\n\n"
+                f"👥 Total Users: {len(users)}\n\n"
+            )
+
+            for user in users:
+                text += (
+                    f"{user.get('username')}\n"
+                    f"🆔 `{user['user_id']}`\n"
+                    f"30: {'✅' if user.get('30') else '❌'}\n"
+                    f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
+                )
+
+            await bot.send_message(
                 ADMIN_ID,
-                build_report()
+                text
             )
 
             await asyncio.sleep(65)
@@ -91,25 +69,66 @@ async def daily_report_loop(client):
         await asyncio.sleep(20)
 
 
-async def reset_loop():
+async def daily_reset_loop():
+
     ist = pytz.timezone("Asia/Kolkata")
 
     while True:
+
         now = datetime.now(ist)
 
         if now.hour == 0 and now.minute == 0:
-            for username in DAILY_STATUS:
-                DAILY_STATUS[username]["30"] = False
-                DAILY_STATUS[username]["bonus"] = False
+
+            await db.reset_daily()
 
             await asyncio.sleep(65)
 
         await asyncio.sleep(20)
+        
+
+@Client.on_message(filters.command("status") & filters.user(ADMIN_ID))
+async def status_cmd(client, message):
+    users = await db.get_daily()
+
+    text = (
+        f"📊 Daily Report\n\n"
+        f"👥 Total Users: {len(users)}\n\n"
+    )
+
+    for user in users:
+        text += (
+            f"{user.get('username')}\n"
+            f"🆔 `{user['user_id']}`\n"
+            f"30: {'✅' if user.get('30') else '❌'}\n"
+            f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
+        )
+
+    await message.reply(text)
 
 
-@app.on_message(filters.command("startreport") & filters.user(ADMIN_ID))
-async def start_report(_, message):
-    asyncio.create_task(daily_report_loop(app))
-    asyncio.create_task(reset_loop())
 
-    await message.reply("✅ Report loops started")
+REPORT_LOOP_RUNNING = False
+
+
+@Client.on_message(filters.command("startreport") & filters.user(ADMIN_ID))
+async def start_report(client, message):
+    global REPORT_LOOP_RUNNING
+
+    if REPORT_LOOP_RUNNING:
+        return await message.reply(
+            "⚠️ Report loop already running."
+        )
+
+    REPORT_LOOP_RUNNING = True
+
+    asyncio.create_task(
+        daily_report_loop()
+    )
+
+    asyncio.create_task(
+        daily_reset_loop()
+    )
+
+    await message.reply(
+        "✅ Daily report loop started."
+    )
