@@ -2,7 +2,7 @@ from pyrogram import Client, filters
 import asyncio
 from datetime import datetime
 import pytz
-from admin_panel import db
+from .admin_panel import db
 
 ADMIN_ID = 1733124290
 
