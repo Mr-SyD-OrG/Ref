@@ -37,13 +37,22 @@ async def daily_cmd(client, message):
     await message.reply("✅ Recorded")
 
 
+last_report_date = None
+
 async def daily_report_loop():
+    global last_report_date
+
     ist = pytz.timezone("Asia/Kolkata")
 
     while True:
         now = datetime.now(ist)
 
-        if now.hour == 18 and now.minute == 0:
+        if (
+            now.hour >= 18
+            and last_report_date != now.date()
+        ):
+
+            last_report_date = now.date()
             users = await db.get_daily()
 
             text = (
@@ -63,28 +72,32 @@ async def daily_report_loop():
                 ADMIN_ID,
                 text
             )
+            last_report_date = now.date()
 
             await asyncio.sleep(65)
 
         await asyncio.sleep(20)
 
 
+last_reset_date = None
+
 async def daily_reset_loop():
+    global last_reset_date
 
     ist = pytz.timezone("Asia/Kolkata")
 
     while True:
-
         now = datetime.now(ist)
 
-        if now.hour == 0 and now.minute == 0:
-
+        if (
+            now.hour == 0
+            and last_reset_date != now.date()
+        ):
             await db.reset_daily()
 
-            await asyncio.sleep(65)
+            last_reset_date = now.date()
 
         await asyncio.sleep(20)
-        
 
 @Client.on_message(filters.command("status") & filters.user(ADMIN_ID))
 async def status_cmd(client, message):
