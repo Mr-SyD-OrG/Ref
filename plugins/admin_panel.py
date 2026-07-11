@@ -36,6 +36,7 @@ class Database:
         self.users = self.db["verified_users"]
         self.accounts = self.db["accounts"]
         self.referrals = self.db["referrals"]
+        self.daily = self.db["daily"]
 
     # -----------------
     # VERIFIED USERS
@@ -209,6 +210,27 @@ class Database:
         return await self.referrals.find_one(
             {"acc_id": acc_id},
             sort=[("timestamp", -1)]
+        )
+
+
+    async def mark_daily(self, user_id, username, daily_type):
+        await self.daily.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "user_id": user_id,
+                "username": username,
+                daily_type: True
+            }},
+            upsert=True
+        )
+
+    async def get_daily(self):
+        return await self.daily.find().to_list(length=None)
+
+    async def reset_daily(self):
+        await self.daily.update_many(
+            {},
+            {"$set": {"30": False, "bonus": False}}
         )
         
 
