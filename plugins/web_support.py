@@ -23,7 +23,7 @@ HTML = """
         tg.expand();
 
         const AdController = window.Adsgram.init({
-            blockId: "38335"
+            blockId: "38337"
         });
 
         async function showAd() {
@@ -59,12 +59,19 @@ async def root_route_handler(request):
     )
 
 
-@routes.post("/reward")
+@routes.get("/reward")
 async def reward_handler(request):
-    print("User completed ad")
-    return web.json_response({"success": True})
+    user_id = request.query.get("userid")
 
+    if not user_id:
+        return web.Response(text="Missing userid")
 
+    # Give reward here
+    print(f"Reward claimed by {user_id}")
+
+    return web.Response(
+        text="✅ Reward granted!"
+    )
 async def web_server():
     web_app = web.Application(client_max_size=30000000)
     web_app.add_routes(routes)
