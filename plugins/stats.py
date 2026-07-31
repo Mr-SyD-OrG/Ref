@@ -64,7 +64,9 @@ async def daily_report_loop(bot):
                 text += (
                     f"{user.get('username')}\n"
                     f"🆔 `{user['user_id']}`\n"
-                    f"30: {'✅' if user.get('30') else '❌'}\n"
+                    f"Start: {'✅' if user.get('dstart') else '❌'}\n"
+                    f"End 30: {'✅' if user.get('30') else '❌'}\n"
+                    f"Task: {'✅' if user.get('task') else '❌'}\n"
                     f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
                 )
 
@@ -112,7 +114,9 @@ async def status_cmd(client, message):
         text += (
             f"{user.get('username')}\n"
             f"🆔 `{user['user_id']}`\n"
-            f"30: {'✅' if user.get('30') else '❌'}\n"
+            f"Start: {'✅' if user.get('dstart') else '❌'}\n"
+            f"End 30: {'✅' if user.get('30') else '❌'}\n"
+            f"Task: {'✅' if user.get('task') else '❌'}\n"
             f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
         )
 
