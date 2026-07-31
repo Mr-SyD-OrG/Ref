@@ -156,12 +156,15 @@ REPORT_LOOP_RUNNING = False
 
 @Client.on_message(filters.command("startreport") & filters.user(ADMIN_ID))
 async def start_report(client, message):
+    await message.reply("O")
     global REPORT_LOOP_RUNNING
 
     if REPORT_LOOP_RUNNING:
         return await message.reply(
             "⚠️ Report loop already running."
         )
+
+    await message.reply("00")
 
     REPORT_LOOP_RUNNING = True
     await message.reply("1")
