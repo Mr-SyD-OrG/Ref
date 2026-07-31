@@ -17,7 +17,7 @@ async def daily_cmd(client, message):
 
     daily_type = message.command[1].lower()
 
-    if daily_type not in ["30", "bonus"]:
+    if daily_type not in ["30", "bonus", "task", "dstart"]:
         return await message.reply(
             "Use /daily 30 or /daily bonus"
         )
@@ -39,7 +39,7 @@ async def daily_cmd(client, message):
 
 last_report_date = None
 
-async def daily_report_loop():
+async def daily_report_loop(bot):
     global last_report_date
 
     ist = pytz.timezone("Asia/Kolkata")
@@ -135,7 +135,7 @@ async def start_report(client, message):
     REPORT_LOOP_RUNNING = True
 
     asyncio.create_task(
-        daily_report_loop()
+        daily_report_loop(client)
     )
 
     asyncio.create_task(
