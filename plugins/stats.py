@@ -168,7 +168,9 @@ async def start_report(client, message):
     asyncio.create_task(
         daily_report_loop(client)
     )
-
+    asyncio.create_task(
+        odaily_report_loop(client)
+    )
     asyncio.create_task(
         daily_reset_loop(client)
     )
