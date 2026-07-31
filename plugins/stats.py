@@ -39,7 +39,7 @@ async def daily_cmd(client, message):
 
 last_report_date = None
 
-async def daily_report_loop(bot):
+async def daily_oreport_loop(bot):
     global last_report_date
 
     ist = pytz.timezone("Asia/Kolkata")
@@ -83,7 +83,7 @@ async def daily_report_loop(bot):
 
 last_reset_date = None
 
-async def daily_reset_loop():
+async def daily_reset_loop(bot):
     global last_reset_date
 
     ist = pytz.timezone("Asia/Kolkata")
@@ -95,12 +95,33 @@ async def daily_reset_loop():
             now.hour == 0
             and last_reset_date != now.date()
         ):
+            await send_daily_report(bot)
             await db.reset_daily()
 
             last_reset_date = now.date()
 
         await asyncio.sleep(20)
 
+async def send_daily_report(bot):
+    users = await db.get_daily()
+
+    text = (
+        f"📊 Daily Report\n\n"
+        f"👥 Total Users: {len(users)}\n\n"
+    )
+
+    for user in users:
+        text += (
+            f"{user.get('username')}\n"
+            f"🆔 `{user['user_id']}`\n"
+            f"Start: {'✅' if user.get('dstart') else '❌'}\n"
+            f"End 30: {'✅' if user.get('30') else '❌'}\n"
+            f"Task: {'✅' if user.get('task') else '❌'}\n"
+            f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
+        )
+
+    await bot.send_message(ADMIN_ID, text)
+    
 @Client.on_message(filters.command("status") & filters.user(ADMIN_ID))
 async def status_cmd(client, message):
     users = await db.get_daily()
