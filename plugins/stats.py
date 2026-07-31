@@ -164,13 +164,16 @@ async def start_report(client, message):
         )
 
     REPORT_LOOP_RUNNING = True
+    await message.reply("1")
 
     asyncio.create_task(
         daily_report_loop(client)
     )
+    await message.reply("2")
     asyncio.create_task(
         daily_oreport_loop(client)
     )
+    await message.reply("3")
     asyncio.create_task(
         daily_reset_loop(client)
     )
