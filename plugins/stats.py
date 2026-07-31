@@ -170,7 +170,7 @@ async def start_report(client, message):
     )
 
     asyncio.create_task(
-        daily_reset_loop()
+        daily_reset_loop(client)
     )
 
     await message.reply(
