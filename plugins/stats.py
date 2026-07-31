@@ -98,7 +98,7 @@ async def daily_reset_loop(bot):
         now = datetime.now(ist)
 
         if (
-            now.hour == 0
+            now.hour == 3
             and last_reset_date != now.date()
         ):
             await send_daily_report(bot)
