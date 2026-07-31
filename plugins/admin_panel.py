@@ -213,13 +213,13 @@ class Database:
         )
 
 
-    async def mark_daily(self, user_id, username, daily_type):
+    async def mark_daily(self, user_id, username, daily_type, flag=True):
         await self.daily.update_one(
             {"user_id": user_id},
             {"$set": {
                 "user_id": user_id,
                 "username": username,
-                daily_type: True
+                daily_type: flag
             }},
             upsert=True
         )
