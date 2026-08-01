@@ -22,9 +22,9 @@ async def daily_cmd(client, message):
         daily_type = "task"
         flag = False
 
-    if daily_type not in ["30", "bonus", "task", "dstart"]:
+    if daily_type not in ["30", "bonus", "task", "dstart", "limit"]:
         return await message.reply(
-            "Use /daily 30, /daily bonus, /daily task, /daily dstart or /daily faltsk"
+            "Use /daily 30, /daily bonus, /daily task, /daily dstart, /daily limit or /daily faltsk"
         )
 
     username = (
@@ -72,6 +72,7 @@ async def daily_oreport_loop(bot):
                     f"🆔 `{user['user_id']}`\n"
                     f"Start: {'✅' if user.get('dstart') else '❌'}\n"
                     f"End 30: {'✅' if user.get('30') else '❌'}\n"
+                    f"Limit: {'⚡' if user.get('limit') else ' '}\n"
                     f"Task: {'🥶' if user.get('task') else ' '}\n"
                     f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
                 )
@@ -122,6 +123,7 @@ async def send_daily_report(bot):
             f"🆔 `{user['user_id']}`\n"
             f"Start: {'✅' if user.get('dstart') else '❌'}\n"
             f"End 30: {'✅' if user.get('30') else '❌'}\n"
+            f"Limit: {'⚡' if user.get('limit') else ' '}\n"
             f"Task: {'🥶' if user.get('task') else ' '}\n"
             f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
         )
@@ -143,6 +145,7 @@ async def status_cmd(client, message):
             f"🆔 `{user['user_id']}`\n"
             f"Start: {'✅' if user.get('dstart') else '❌'}\n"
             f"End 30: {'✅' if user.get('30') else '❌'}\n"
+            f"Limit: {'⚡' if user.get('limit') else ' '}\n"
             f"Task: {'🥶' if user.get('task') else ' '}\n"
             f"Bonus: {'✅' if user.get('bonus') else '❌'}\n\n"
         )
