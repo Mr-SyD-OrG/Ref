@@ -19,8 +19,10 @@ async def daily_cmd(client, message):
     flag = True
 
     if daily_type == "faltsk":
-        daily_type = "task"
-        flag = False
+        await db.mark_daily(message.from_user.id, username, "task", False)
+        await db.mark_daily(message.from_user.id, username, "limit", False)
+        return await message.reply("✅ Recorded")
+        
 
     if daily_type not in ["30", "bonus", "task", "dstart", "limit"]:
         return await message.reply(
