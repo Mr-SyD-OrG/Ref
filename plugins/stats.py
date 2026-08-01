@@ -18,6 +18,12 @@ async def daily_cmd(client, message):
     daily_type = message.command[1].lower()
     flag = True
 
+    username = (
+        f"@{message.from_user.username}"
+        if message.from_user.username
+        else message.from_user.first_name
+    )
+
     if daily_type == "faltsk":
         await db.mark_daily(message.from_user.id, username, "task", False)
         await db.mark_daily(message.from_user.id, username, "limit", False)
@@ -28,12 +34,6 @@ async def daily_cmd(client, message):
         return await message.reply(
             "Use /daily 30, /daily bonus, /daily task, /daily dstart, /daily limit or /daily faltsk"
         )
-
-    username = (
-        f"@{message.from_user.username}"
-        if message.from_user.username
-        else message.from_user.first_name
-    )
 
     await db.mark_daily(
         message.from_user.id,
