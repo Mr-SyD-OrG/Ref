@@ -230,7 +230,7 @@ class Database:
     async def reset_daily(self):
         await self.daily.update_many(
             {},
-            {"$set": {"30": False, "bonus": False, "task": False, "dstart": False, "": False, "limit": False}}
+            {"$set": {"30": False, "bonus": False, "task": False, "dstart": False, "limit": False}}
         )
         
 
